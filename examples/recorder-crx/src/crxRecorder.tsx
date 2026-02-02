@@ -25,6 +25,7 @@ import type { CrxSettings } from './settings';
 import { addSettingsChangedListener, defaultSettings, loadSettings, removeSettingsChangedListener } from './settings';
 import ModalContainer, { create as createModal } from 'react-modal-promise';
 import { SaveCodeForm } from './saveCodeForm';
+import { RoostRecorderView } from './roostRecorderView';
 import './crxRecorder.css';
 import './form.css';
 
@@ -77,6 +78,8 @@ export const CrxRecorder: React.FC = ({
   const [log, setLog] = React.useState(new Map<string, CallLog>());
   const [mode, setMode] = React.useState<Mode>('none');
   const [selectedFileId, setSelectedFileId] = React.useState<string>(defaultSettings.targetLanguage);
+  // Enable Roost custom view
+  const [showRoostView, setShowRoostView] = React.useState(true);
 
   React.useEffect(() => {
     const port = chrome.runtime.connect({ name: 'recorder' });
@@ -190,22 +193,35 @@ export const CrxRecorder: React.FC = ({
   return <>
     <ModalContainer />
 
-    <div className='recorder'>
-      {settings.experimental && <>
-        <Toolbar>
-          <ToolbarButton icon='save' title='Save' disabled={false} onClick={saveCode}>Save</ToolbarButton>
-          <div style={{ flex: 'auto' }}></div>
-          <div className='dropdown'>
-            <ToolbarButton icon='tools' title='Tools' disabled={false} onClick={() => {}}></ToolbarButton>
-            <div className='dropdown-content right-align'>
-              <a href='#' onClick={requestStorageState}>Download storage state</a>
+    {showRoostView ? (
+      <RoostRecorderView
+        sources={sources}
+        log={log}
+        mode={mode}
+        paused={paused}
+        onEditedCode={dispatchEditedCode}
+        onCursorActivity={dispatchCursorActivity}
+        onClose={() => setShowRoostView(false)}
+      />
+    ) : (
+      <div className='recorder'>
+        {settings.experimental && <>
+          <Toolbar>
+            <ToolbarButton icon='save' title='Save' disabled={false} onClick={saveCode}>Save</ToolbarButton>
+            <div style={{ flex: 'auto' }}></div>
+            <div className='dropdown'>
+              <ToolbarButton icon='tools' title='Tools' disabled={false} onClick={() => {}}></ToolbarButton>
+              <div className='dropdown-content right-align'>
+                <a href='#' onClick={requestStorageState}>Download storage state</a>
+              </div>
             </div>
-          </div>
-          <ToolbarSeparator />
-          <ToolbarButton icon='settings-gear' title='Preferences' onClick={showPreferences}></ToolbarButton>
-        </Toolbar>
-      </>}
-      <Recorder sources={sources} paused={paused} log={log} mode={mode} onEditedCode={dispatchEditedCode} onCursorActivity={dispatchCursorActivity} />
-    </div>
+            <ToolbarSeparator />
+            <ToolbarButton icon='view-roost' title='Switch to Roost View' onClick={() => setShowRoostView(true)}></ToolbarButton>
+            <ToolbarButton icon='settings-gear' title='Preferences' onClick={showPreferences}></ToolbarButton>
+          </Toolbar>
+        </>}
+        <Recorder sources={sources} paused={paused} log={log} mode={mode} onEditedCode={dispatchEditedCode} onCursorActivity={dispatchCursorActivity} />
+      </div>
+    )}
   </>;
 };

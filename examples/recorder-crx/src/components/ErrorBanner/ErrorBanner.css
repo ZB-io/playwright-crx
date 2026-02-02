@@ -1,0 +1,93 @@
+/* Error Banner */
+.roost-error-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: var(--error-background);
+  border-bottom: 2px solid var(--error);
+  gap: 16px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.roost-error-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.roost-error-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.roost-error-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.roost-error-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--error);
+  margin-bottom: 4px;
+}
+
+.roost-error-message {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roost-error-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.roost-error-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.roost-error-btn-primary {
+  background-color: var(--primary);
+  color: var(--text-inverse);
+}
+
+.roost-error-btn-primary:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px var(--shadow);
+}
+
+.roost-error-btn-secondary {
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.roost-error-btn-secondary:hover {
+  background-color: var(--bg-hover);
+}

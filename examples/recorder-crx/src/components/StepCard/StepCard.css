@@ -1,0 +1,126 @@
+/* Step Cards */
+.roost-step-card {
+  background-color: var(--step-background);
+  border: 1px solid var(--step-border);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  padding: 12px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.roost-step-card:hover {
+  box-shadow: 0 2px 6px var(--step-hover);
+  border-color: var(--border-dark);
+}
+
+.roost-step-card.error {
+  border-color: var(--error);
+  background-color: var(--error-background);
+}
+
+.roost-step-card.in-progress {
+  border-color: var(--info);
+  background-color: var(--info-background);
+}
+
+.roost-step-header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.roost-step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  background-color: var(--step-number-background);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--step-number-text);
+  flex-shrink: 0;
+}
+
+.roost-step-card.in-progress .roost-step-number {
+  background-color: var(--info);
+  color: var(--text-inverse);
+}
+
+.roost-step-card.error .roost-step-number {
+  background-color: var(--error);
+  color: var(--text-inverse);
+}
+
+.roost-step-title-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.roost-step-action {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.roost-step-target {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  background-color: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 3px;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roost-step-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.roost-step-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  border-radius: 3px;
+  transition: background-color 0.15s;
+}
+
+.roost-step-action-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.roost-step-details {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-light);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.roost-step-message {
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.roost-step-error {
+  margin-top: 8px;
+  padding: 6px 8px;
+  background-color: var(--error-light);
+  border-left: 3px solid var(--error);
+  font-size: 11px;
+  color: var(--error);
+  border-radius: 3px;
+}

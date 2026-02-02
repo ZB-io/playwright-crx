@@ -1,0 +1,78 @@
+/* Header */
+.roost-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background-color: var(--surface);
+  border-bottom: 2px solid var(--primary);
+  box-shadow: 0 2px 4px var(--shadow);
+}
+
+.roost-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.roost-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.roost-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.roost-divider {
+  width: 1px;
+  height: 24px;
+  background-color: var(--border);
+  flex-shrink: 0;
+}
+
+.roost-recording-name {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+  outline: none;
+  padding: 6px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  min-width: 0;
+}
+
+.roost-recording-name:hover {
+  background-color: var(--bg-hover);
+}
+
+.roost-recording-name:focus {
+  background-color: var(--bg-hover);
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.roost-recording-name::placeholder {
+  color: var(--text-tertiary);
+}
+
+.roost-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  background-color: var(--primary);
+  color: var(--text-inverse);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}

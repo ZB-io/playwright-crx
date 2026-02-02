@@ -1,12 +1,12 @@
 {
-  "name": "Playwright CRX",
+  "name": "Roost Recorder",
   "version": "0.15.0",
   "manifest_version": 3,
   "icons": {
-    "16": "icon-16x16.png",
-    "32": "icon-32x32.png",
-    "48": "icon-48x48.png",
-    "128": "icon-192x192.png"
+    "16": "logo192.png",
+    "32": "logo192.png",
+    "48": "logo192.png",
+    "128": "logo512.png"
   },
   "background": {
     "service_worker": "background.js",
@@ -14,10 +14,11 @@
   },
   "action": {
     "default_icon": {
-      "16": "icon-16x16.png",
-      "32": "icon-32x32.png"
+      "16": "logo192.png",
+      "32": "logo192.png",
+      "48": "logo192.png"
     },
-    "default_title": "Record"
+    "default_title": "Roost Recorder"
   },
   "commands": {
     "record": {

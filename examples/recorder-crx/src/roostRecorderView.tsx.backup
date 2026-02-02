@@ -1,0 +1,527 @@
+/**
+ * Copyright (c) Rui Figueira.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import * as React from 'react';
+import type { CallLog, Mode, Source } from '@recorder/recorderTypes';
+import { CodeMirrorWrapper } from '@web/components/codeMirrorWrapper';
+import type { SourceHighlight } from '@web/components/codeMirrorWrapper';
+import { emptySource, SourceChooser } from '@web/components/sourceChooser';
+import { asLocator } from '@isomorphic/locatorGenerators';
+import { copy } from '@web/uiUtils';
+import yaml from 'yaml';
+import { parseAriaSnapshot } from '@isomorphic/ariaSnapshot';
+import './roostRecorderView.css';
+
+export interface RoostRecorderViewProps {
+  sources: Source[];
+  log: Map<string, CallLog>;
+  mode: Mode;
+  paused: boolean;
+  onEditedCode?: (code: string) => any;
+  onCursorActivity?: (position: { line: number }) => any;
+  onClose: () => void;
+}
+
+export const RoostRecorderView: React.FC<RoostRecorderViewProps> = ({
+  sources,
+  log,
+  mode,
+  paused,
+  onClose,
+}) => {
+  const [selectedFileId, setSelectedFileId] = React.useState<string | undefined>();
+  const [runningFileId, setRunningFileId] = React.useState<string | undefined>();
+  const [recordingName, setRecordingName] = React.useState('new recording');
+  const [showCodeView, setShowCodeView] = React.useState(false);
+  const [ariaSnapshot, setAriaSnapshot] = React.useState<string | undefined>();
+  const [ariaSnapshotErrors, setAriaSnapshotErrors] = React.useState<SourceHighlight[]>();
+  const [selectorFocusOnChange, setSelectorFocusOnChange] = React.useState<boolean | undefined>(true);
+
+  const fileId = selectedFileId || runningFileId || sources[0]?.id;
+
+  const source = React.useMemo(() => {
+    if (fileId) {
+      const source = sources.find(s => s.id === fileId);
+      if (source)
+        return source;
+    }
+    return emptySource();
+  }, [sources, fileId]);
+
+  const [locator, setLocator] = React.useState('');
+  window.playwrightElementPicked = (elementInfo: any, userGesture?: boolean) => {
+    const language = source.language;
+    setLocator(asLocator(language, elementInfo.selector));
+    setAriaSnapshot(elementInfo.ariaSnapshot);
+    setAriaSnapshotErrors([]);
+    setSelectorFocusOnChange(userGesture);
+
+    const isRecording = ['recording', 'assertingText', 'assertingVisibility', 'assertingValue', 'assertingSnapshot'].includes(mode);
+    window.dispatch({ event: 'setMode', params: { mode: isRecording ? 'recording' : 'standby' } }).catch(() => { });
+  };
+
+  window.playwrightSetRunningFile = setRunningFileId;
+
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  React.useLayoutEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ block: 'center', inline: 'nearest' });
+  }, [messagesEndRef]);
+
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      switch (event.key) {
+        case 'F8':
+          event.preventDefault();
+          if (paused)
+            window.dispatch({ event: 'resume' });
+          else
+            window.dispatch({ event: 'pause' });
+          break;
+        case 'F10':
+          event.preventDefault();
+          if (paused)
+            window.dispatch({ event: 'step' });
+          break;
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [paused]);
+
+  const onEditorChange = React.useCallback((selector: string) => {
+    if (mode === 'none' || mode === 'inspecting')
+      window.dispatch({ event: 'setMode', params: { mode: 'standby' } });
+    setLocator(selector);
+    window.dispatch({ event: 'highlightRequested', params: { selector } });
+  }, [mode]);
+
+  const onAriaEditorChange = React.useCallback((ariaSnapshot: string) => {
+    if (mode === 'none' || mode === 'inspecting')
+      window.dispatch({ event: 'setMode', params: { mode: 'standby' } });
+    const { fragment, errors } = parseAriaSnapshot(yaml, ariaSnapshot, { prettyErrors: false });
+    const highlights = errors.map(error => {
+      const highlight: SourceHighlight = {
+        message: error.message,
+        line: error.range[1].line,
+        column: error.range[1].col,
+        type: 'subtle-error',
+      };
+      return highlight;
+    });
+    setAriaSnapshotErrors(highlights);
+    setAriaSnapshot(ariaSnapshot);
+    if (!errors.length)
+      window.dispatch({ event: 'highlightRequested', params: { ariaTemplate: fragment } });
+  }, [mode]);
+
+  const isRecording = mode === 'recording' || mode === 'recording-inspecting';
+  const isInspecting = mode === 'inspecting' || mode === 'recording-inspecting';
+
+  const handleRecord = () => {
+    window.dispatch({ event: 'setMode', params: { mode: mode === 'none' || mode === 'standby' || mode === 'inspecting' ? 'recording' : 'standby' } });
+  };
+
+  const handleInspect = () => {
+    const newMode = {
+      'inspecting': 'standby',
+      'none': 'inspecting',
+      'standby': 'inspecting',
+      'recording': 'recording-inspecting',
+      'recording-inspecting': 'recording',
+      'assertingText': 'recording-inspecting',
+      'assertingVisibility': 'recording-inspecting',
+      'assertingValue': 'recording-inspecting',
+      'assertingSnapshot': 'recording-inspecting',
+    }[mode];
+    window.dispatch({ event: 'setMode', params: { mode: newMode } }).catch(() => { });
+  };
+
+  const handleAssertVisibility = () => {
+    window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingVisibility' ? 'recording' : 'assertingVisibility' } });
+  };
+
+  const handleAssertText = () => {
+    window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingText' ? 'recording' : 'assertingText' } });
+  };
+
+  const handleAssertValue = () => {
+    window.dispatch({ event: 'setMode', params: { mode: mode === 'assertingValue' ? 'recording' : 'assertingValue' } });
+  };
+
+  const handleClear = () => {
+    window.dispatch({ event: 'clear' });
+  };
+
+  const handleCopy = () => {
+    copy(source.text);
+  };
+
+  const handleResume = () => {
+    window.dispatch({ event: 'resume' });
+  };
+
+  const handlePause = () => {
+    window.dispatch({ event: 'pause' });
+  };
+
+  const handleStep = () => {
+    window.dispatch({ event: 'step' });
+  };
+
+  // Convert code line to natural language
+  const convertToNaturalLanguage = (codeLine: string): string => {
+    // Remove 'await' and trailing semicolons
+    let line = codeLine.replace('await ', '').replace(/;$/, '').trim();
+
+    // Handle page.goto()
+    if (line.includes('.goto(')) {
+      const urlMatch = line.match(/\.goto\(['"]([^'"]+)['"]/);
+      if (urlMatch) {
+        return `Go to ${urlMatch[1]}`;
+      }
+      return 'Navigate to page';
+    }
+
+    // Handle clicks
+    if (line.includes('.click(')) {
+      // Extract selector for context
+      const selectorMatch = line.match(/getByRole\(['"]([^'"]+)['"],\s*\{[^}]*name:\s*['"]([^'"]+)['"]/);
+      if (selectorMatch) {
+        return `Click on "${selectorMatch[2]}"`;
+      }
+
+      const roleMatch = line.match(/getByRole\(['"]([^'"]+)['"]/);
+      if (roleMatch) {
+        return `Click on ${roleMatch[1]}`;
+      }
+
+      const testIdMatch = line.match(/getByTestId\(['"]([^'"]+)['"]/);
+      if (testIdMatch) {
+        return `Click on ${testIdMatch[1].replace(/-/g, ' ')}`;
+      }
+
+      const textMatch = line.match(/getByText\(['"]([^'"]+)['"]/);
+      if (textMatch) {
+        return `Click on "${textMatch[1]}"`;
+      }
+
+      return 'Click element';
+    }
+
+    // Handle fill
+    if (line.includes('.fill(')) {
+      const fillMatch = line.match(/\.fill\(['"]([^'"]+)['"]/);
+      const testIdMatch = line.match(/getByTestId\(['"]([^'"]+)['"]/);
+
+      if (fillMatch && testIdMatch) {
+        const fieldName = testIdMatch[1].replace(/-/g, ' ');
+        return `Fill "${fillMatch[1]}" in ${fieldName}`;
+      }
+
+      if (fillMatch) {
+        return `Fill "${fillMatch[1]}"`;
+      }
+
+      return 'Fill input field';
+    }
+
+    // Handle press (keyboard)
+    if (line.includes('.press(')) {
+      const keyMatch = line.match(/\.press\(['"]([^'"]+)['"]/);
+      if (keyMatch) {
+        return `Press ${keyMatch[1]} key`;
+      }
+      return 'Press key';
+    }
+
+    // Handle check/uncheck
+    if (line.includes('.check(')) {
+      return 'Check checkbox';
+    }
+    if (line.includes('.uncheck(')) {
+      return 'Uncheck checkbox';
+    }
+
+    // Handle select
+    if (line.includes('.selectOption(')) {
+      const optionMatch = line.match(/\.selectOption\(['"]([^'"]+)['"]/);
+      if (optionMatch) {
+        return `Select "${optionMatch[1]}"`;
+      }
+      return 'Select option';
+    }
+
+    // Handle hover
+    if (line.includes('.hover(')) {
+      return 'Hover over element';
+    }
+
+    // Fallback: return cleaned up code
+    return line;
+  };
+
+  // Extract steps from source code when log is empty (during recording)
+  const stepsFromSource = React.useMemo(() => {
+    if (!source.text) return [];
+
+    const lines = source.text.split('\n');
+    const steps: Array<{id: string, title: string, line: string}> = [];
+
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      // Skip imports, test declarations, and empty lines
+      if (!trimmed ||
+          trimmed.startsWith('import ') ||
+          trimmed.startsWith('test(') ||
+          trimmed === '}' ||
+          trimmed === '});' ||
+          trimmed === '{') {
+        return;
+      }
+
+      // Extract meaningful steps (await statements, clicks, etc.)
+      if (trimmed.includes('await ') || trimmed.includes('.click') || trimmed.includes('.fill')) {
+        steps.push({
+          id: `step-${index}`,
+          title: convertToNaturalLanguage(trimmed),
+          line: trimmed
+        });
+      }
+    });
+
+    return steps;
+  }, [source.text]);
+
+  const logArray = React.useMemo(() => {
+    return Array.from(log.values());
+  }, [log]);
+
+  // Use log if available (during playback), otherwise use steps from source (during recording)
+  const displaySteps = logArray.length > 0 ? logArray : stepsFromSource;
+
+  return (
+    <div className="roost-recorder-container">
+      <div className="roost-toolbar">
+        <div className="roost-toolbar-left">
+          <button
+            className={`roost-btn ${isRecording ? 'roost-btn-recording' : 'roost-btn-secondary'}`}
+            onClick={handleRecord}
+            title="Record"
+          >
+            <span className="roost-btn-icon">⏺</span>
+            <span className="roost-btn-text">Record</span>
+          </button>
+          <button
+            className={`roost-btn ${isInspecting ? 'roost-btn-active' : 'roost-btn-secondary'}`}
+            onClick={handleInspect}
+            title="Pick locator"
+          >
+            <span className="roost-btn-icon">🎯</span>
+            <span className="roost-btn-text">Inspect</span>
+          </button>
+          <button
+            className={`roost-btn ${mode === 'assertingVisibility' ? 'roost-btn-active' : 'roost-btn-secondary'}`}
+            onClick={handleAssertVisibility}
+            disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
+            title="Assert visibility"
+          >
+            <span className="roost-btn-icon">👁</span>
+            <span className="roost-btn-text">Assert Visibility</span>
+          </button>
+          <button
+            className={`roost-btn ${mode === 'assertingText' ? 'roost-btn-active' : 'roost-btn-secondary'}`}
+            onClick={handleAssertText}
+            disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
+            title="Assert text"
+          >
+            <span className="roost-btn-icon">T</span>
+            <span className="roost-btn-text">Assert Text</span>
+          </button>
+          <button
+            className={`roost-btn ${mode === 'assertingValue' ? 'roost-btn-active' : 'roost-btn-secondary'}`}
+            onClick={handleAssertValue}
+            disabled={mode === 'none' || mode === 'standby' || mode === 'inspecting'}
+            title="Assert value"
+          >
+            <span className="roost-btn-icon">V</span>
+            <span className="roost-btn-text">Assert Value</span>
+          </button>
+
+          <div className="roost-toolbar-divider"></div>
+
+          <button
+            className="roost-btn roost-btn-icon-only"
+            onClick={handleCopy}
+            disabled={!source || !source.text}
+            title="Copy"
+          >
+            📋
+          </button>
+          <button
+            className="roost-btn roost-btn-icon-only"
+            onClick={handleResume}
+            disabled={!paused}
+            title="Resume (F8)"
+          >
+            ▶️
+          </button>
+          <button
+            className="roost-btn roost-btn-icon-only"
+            onClick={handlePause}
+            disabled={paused}
+            title="Pause (F8)"
+          >
+            ⏸
+          </button>
+          <button
+            className="roost-btn roost-btn-icon-only"
+            onClick={handleStep}
+            disabled={!paused}
+            title="Step over (F10)"
+          >
+            ⏭
+          </button>
+          <button
+            className="roost-btn roost-btn-icon-only"
+            onClick={handleClear}
+            disabled={!source || !source.text}
+            title="Clear"
+          >
+            🗑
+          </button>
+        </div>
+
+        <div className="roost-toolbar-right">
+          <span className="roost-target-label">Target:</span>
+          <SourceChooser fileId={fileId} sources={sources} setFileId={fileId => {
+            setSelectedFileId(fileId);
+            window.dispatch({ event: 'fileChanged', params: { file: fileId } });
+          }} />
+          <button
+            className="roost-btn roost-btn-secondary roost-btn-small"
+            onClick={() => setShowCodeView(!showCodeView)}
+            title={showCodeView ? "Show Steps View" : "Show Code View"}
+          >
+            {showCodeView ? "📋 Steps" : "💻 Code"}
+          </button>
+        </div>
+      </div>
+
+      <div className="roost-recording-name-bar">
+        <input
+          type="text"
+          value={recordingName}
+          onChange={(e) => setRecordingName(e.target.value)}
+          className="roost-recording-input"
+          placeholder="Recording name"
+        />
+        <button className="roost-expand-btn">˅</button>
+      </div>
+
+      <div className="roost-content">
+        {showCodeView ? (
+          <div className="roost-code-view">
+            <CodeMirrorWrapper
+              text={source.text}
+              language={source.language}
+              highlight={source.highlight}
+              revealLine={source.revealLine}
+              readOnly={source.isRecorded}
+              lineNumbers={true}
+              focusOnChange={false}
+              wrapLines={true}
+            />
+          </div>
+        ) : (
+          <div className="roost-steps-view">
+            {displaySteps.length === 0 ? (
+              <div className="roost-empty-state">
+                <p>Click Record to start capturing actions</p>
+              </div>
+            ) : (
+              <>
+                {displaySteps.map((step, index) => {
+                  // Check if it's a CallLog or a source step
+                  const isCallLog = 'params' in step;
+
+                  if (isCallLog) {
+                    const callLog = step as CallLog;
+                    const locatorText = callLog.params?.selector ? asLocator(source.language, callLog.params.selector) : null;
+                    return (
+                      <div key={callLog.id} className={`roost-step-card ${callLog.status === 'error' ? 'error' : ''} ${callLog.status === 'in-progress' ? 'in-progress' : ''}`}>
+                        <div className="roost-step-header">
+                          <div className="roost-step-number">{index + 1}</div>
+                          <div className="roost-step-title-wrapper">
+                            <div className="roost-step-action">{callLog.title || 'No title'}</div>
+                            {callLog.params?.url && (
+                              <div className="roost-step-target">{callLog.params.url}</div>
+                            )}
+                            {locatorText && !callLog.params?.url && (
+                              <div className="roost-step-target">{locatorText}</div>
+                            )}
+                          </div>
+                          <div className="roost-step-actions">
+                            <button className="roost-step-action-btn" title="Expand">˅</button>
+                            <button className="roost-step-action-btn" title="Screenshot">📷</button>
+                          </div>
+                        </div>
+                        {callLog.messages && callLog.messages.length > 0 && (
+                          <div className="roost-step-details">
+                            {callLog.messages.map((msg, i) => (
+                              <div key={i} className="roost-step-message">{msg}</div>
+                            ))}
+                          </div>
+                        )}
+                        {callLog.error && (
+                          <div className="roost-step-error">{callLog.error}</div>
+                        )}
+                      </div>
+                    );
+                  } else {
+                    // Render source code step
+                    const sourceStep = step as {id: string, title: string, line: string};
+                    return (
+                      <div key={sourceStep.id} className="roost-step-card">
+                        <div className="roost-step-header">
+                          <div className="roost-step-number">{index + 1}</div>
+                          <div className="roost-step-title-wrapper">
+                            <div className="roost-step-action">{sourceStep.title}</div>
+                          </div>
+                          <div className="roost-step-actions">
+                            <button className="roost-step-action-btn" title="Expand">˅</button>
+                            <button className="roost-step-action-btn" title="Screenshot">📷</button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                })}
+              </>
+            )}
+            <div ref={messagesEndRef}></div>
+          </div>
+        )}
+      </div>
+
+      <div className="roost-footer">
+        <div className="roost-footer-tab">
+          <span>close</span>
+          <span className="roost-tab-icon">⟲</span>
+        </div>
+      </div>
+    </div>
+  );
+};

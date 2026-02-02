@@ -25,6 +25,19 @@ type CrxMode = Mode | 'detached';
 const stoppedModes: CrxMode[] = ['none', 'standby', 'detached'];
 const recordingModes: CrxMode[] = ['recording', 'assertingText', 'assertingVisibility', 'assertingValue', 'assertingSnapshot'];
 
+// Handle unhandled promise rejections to suppress expected framework errors
+self.addEventListener('unhandledrejection', (event) => {
+  const message = event.reason?.message || String(event.reason);
+
+  // Suppress known framework errors that are expected
+  if (message.includes('Frame has been detached') ||
+      message.includes('already started') ||
+      message.includes('detached')) {
+    event.preventDefault(); // Prevent console error
+    console.debug('Roost Recorder: Suppressed expected framework warning:', message);
+  }
+});
+
 // we must lazy initialize it
 let crxAppPromise: Promise<CrxApplication> | undefined;
 
@@ -84,7 +97,14 @@ async function getCrxApp(incognito: boolean) {
 
     crxAppPromise = crx.start({ incognito }).then(crxApp => {
       crxApp.recorder.addListener('hide', async () => {
-        await crxApp.close();
+        try {
+          await crxApp.close();
+        } catch (error) {
+          // Ignore "Frame has been detached" errors
+          if (!(error instanceof Error) || !error.message.includes('detached')) {
+            console.error('Error closing recorder:', error);
+          }
+        }
         crxAppPromise = undefined;
       });
       crxApp.recorder.addListener('modechanged', async ({ mode }) => {
@@ -133,9 +153,8 @@ async function attach(tab: chrome.tabs.Tab, mode?: Mode) {
     });
   }
 
-  const crxApp = await getCrxApp(tab.incognito);
-
   try {
+    const crxApp = await getCrxApp(tab.incognito);
 
     if (crxApp.recorder.isHidden()) {
       await crxApp.recorder.show({
@@ -150,6 +169,16 @@ async function attach(tab: chrome.tabs.Tab, mode?: Mode) {
 
     if (mode)
       await crxApp.recorder.setMode(mode);
+  } catch (error) {
+    // Handle errors gracefully
+    if (error instanceof Error) {
+      // Ignore "already started" and "frame detached" errors
+      if (error.message.includes('already started') || error.message.includes('detached')) {
+        console.warn('Recorder initialization warning:', error.message);
+      } else {
+        console.error('Error attaching recorder:', error);
+      }
+    }
   } finally {
     chrome.action.enable();
   }
@@ -161,10 +190,15 @@ async function setTestIdAttributeName(testIdAttributeName: string) {
 
 chrome.action.onClicked.addListener(attach);
 
-chrome.contextMenus.create({
-  id: 'pw-recorder',
-  title: 'Attach to Playwright Recorder',
-  contexts: ['all'],
+// Create context menu with error handling for duplicate ID
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'roost-recorder',
+      title: 'Attach to Roost Recorder',
+      contexts: ['all'],
+    });
+  });
 });
 
 chrome.contextMenus.onClicked.addListener(async (_, tab) => {

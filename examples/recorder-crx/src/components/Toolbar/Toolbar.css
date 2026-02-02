@@ -1,0 +1,119 @@
+/* Toolbar */
+.roost-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background-color: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.roost-toolbar-left {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.roost-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.roost-target-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.roost-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--border);
+  margin: 0 2px;
+}
+
+/* Buttons */
+.roost-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  background-color: var(--button-secondary);
+  color: var(--button-text);
+}
+
+.roost-btn:hover:not(:disabled) {
+  background-color: var(--button-secondary-hover);
+}
+
+.roost-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.roost-btn-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.roost-btn-text {
+  line-height: 1;
+}
+
+.roost-btn-icon-only {
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+.roost-btn-small {
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+.roost-btn-recording {
+  background-color: var(--recording);
+  color: var(--text-inverse);
+}
+
+.roost-btn-recording:hover:not(:disabled) {
+  background-color: var(--recording-hover);
+}
+
+.roost-btn-recording .roost-btn-icon {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.roost-btn-active {
+  background-color: var(--active);
+  color: var(--text-inverse);
+}
+
+.roost-btn-active:hover:not(:disabled) {
+  background-color: var(--active-hover);
+}
+
+.roost-btn-secondary {
+  background-color: var(--button-secondary);
+  color: var(--button-text);
+}
+
+.roost-btn-secondary:hover:not(:disabled) {
+  background-color: var(--button-secondary-hover);
+}
