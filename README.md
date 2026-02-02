@@ -1,5 +1,12 @@
 # Playwright CRX
 
+----------------------------------------------------------------------------------------------
+# Compile and use it in Roost
+```
+npx esbuild generated-entry.ts --bundle --outfile=playwright-generator.js --format=iife
+```
+
+----------------------------------------------------------------------------------------------
 This package contains the [Chrome Extensions](https://developer.chrome.com/docs/extensions/) flavor of the [Playwright](http://github.com/microsoft/playwright) library.
 
 For that, it relies on [`chrome.debugger`](https://developer.chrome.com/docs/extensions/reference/debugger/) to implement [playwright's `ConnectionTransport`](https://github.com/microsoft/playwright/blob/f8a30fb726bc35d4058a2d010b2ed5f6ca2409a3/packages/playwright-core/src/server/transport.ts#L54) interface.
